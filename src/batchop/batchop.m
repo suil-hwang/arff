@@ -32,7 +32,7 @@ function varargout = batchop(op, A, varargin)
 %    A, assuming the given rank.
 %    
 %On CPU only:
-%    [Q, R, p, info] = BATCHOP('qr', A) performs QR decomposition with pivoting
+%    [Q, R, p] = BATCHOP('qr', A) performs QR decomposition with pivoting
 %    for each page: A(:, p, k) = Q(:, :, k) * R(:, :, k).
 %
 %    X = BATCHOP('trisolve', T, B, 'L' or 'U') solves the lower- or

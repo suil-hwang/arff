@@ -1,7 +1,8 @@
 # Algebraic Representations for Volumetric Frame Fields
 
 ## Introduction
-This code includes algorithms for computing volumetric (octahedral and odeco) frame fields, described in detail in our paper:
+
+This code includes algorithms for computing volumetric (octahedral and odeco) frame fields, described in detail in the paper:
 
 > Palmer, D., Bommes, D., & Solomon, J. (2020). [Algebraic Representations for Volumetric Frame Fields.](https://dl.acm.org/doi/pdf/10.1145/3366786) ACM Transactions on Graphics (TOG), 39(2), 1-17.
 
@@ -9,107 +10,98 @@ This code includes algorithms for computing volumetric (octahedral and odeco) fr
 
 [![DOI](https://zenodo.org/badge/208910749.svg)](https://zenodo.org/badge/latestdoi/208910749)
 
-## External Dependencies
-- [Manopt](https://www.manopt.org) 5.0
-- [Mosek](https://www.mosek.com) 9.0 ([C++ Fusion API](https://docs.mosek.com/9.0/cxxfusion/index.html#))
-- Intel [TBB](https://github.com/intel/tbb)
-- [MatPlotLib Colormaps](https://www.mathworks.com/matlabcentral/fileexchange/62729-matplotlib-2-0-colormaps-perceptually-uniform-and-beautiful)
-- (Optional) [Eigen 3](https://eigen.tuxfamily.org)
+## External Dependencies (Python)
 
-## Installation
-First, remember to build and install the Mosek Fusion API as described
-[here](https://docs.mosek.com/9.0/cxxfusion/install-interface.html).
+- Python 3.10+
+- `numpy`, `scipy` (core math)
+- `meshio` (mesh I/O)
+- `pymanopt` (RTR solvers)
+- `mosek` (required for SDP projection used by MBO projection operators)
+- Optional for visualization: `matplotlib`, `pyvista`
 
-The following commands will compile all MEX files and add the code
-to the MATLAB path.
-```matlab
-cd src/batchop
-mexbuild /path/to/tbb/include
-cd ../sdp
-mexbuild /path/to/tbb/include /path/to/mosek/9.0
-cd ../../ext/ray
-mexbuild /path/to/eigen3 /path/to/tbb/include
-cd ../..
-install
+## Installation (Python)
+
+Install in editable mode:
+
+```bash
+python -m pip install -U pip
+python -m pip install -e .
 ```
-## Usage
-The main commands for computing fields are `MBO`, `OctaManopt`,
-and `OdecoManopt`.
+
+Install with common optional dependencies:
+
+```bash
+python -m pip install -e ".[mesh,rtr,sdp,plot,test]"
+```
+
+If you use MOSEK-based SDP projection, ensure your MOSEK license is available in your environment.
+
+## Usage (Python)
+
+Main entry points are `MBO`, `OctaManopt`, and `OdecoManopt`.
 
 ### Loading Models
-Some tetrahedral meshes in `Medit` format
-are included in the `meshes` directory for convenience.
-To load a mesh, use
-```matlab
-mesh = ImportMesh('meshes/rockerarm_91k.mesh'); % Medit format
-```
-We also support meshes in `Tetgen` format:
-```matlab
-mesh = ImportMesh('path/to/file.node'); % Tetgen .node/.ele format
+
+Some tetrahedral meshes in `Medit` format are included in the `meshes` directory.
+
+```python
+from mesh import ImportMesh
+
+# Medit format
+mesh = ImportMesh("meshes/rockerarm_91k.mesh")
+
+# TetGen format (.node/.ele pair)
+mesh_tetgen = ImportMesh("path/to/file.node")
 ```
 
 ### Computing Frame Fields
-The following commands compute octahedral and odeco fields by MBO
-with random initialization:
-```matlab
-qOcta = MBO(mesh, OctaMBO, [], 1, 0);
-qOdeco = MBO(mesh, OdecoMBO, [], 1, 0);
+
+Compute octahedral and odeco fields with MBO (random initialization):
+
+```python
+from mbo import MBO, OctaMBO, OdecoMBO
+
+q_octa, q0_octa, info_octa = MBO(mesh, OctaMBO, None, 1, 0)
+q_odeco, q0_odeco, info_odeco = MBO(mesh, OdecoMBO, None, 1, 0)
 ```
-For modified MBO as described in our paper,
-set the diffusion time multiplier and exponent as follows:
-```matlab
-qOcta = MBO(mesh, OctaMBO, [], 50, 3);
-qOdeco = MBO(mesh, OdecoMBO, [], 50, 3);
+
+Modified MBO (diffusion multiplier/exponent from the paper):
+
+```python
+q_octa, _, _ = MBO(mesh, OctaMBO, None, 50, 3)
+q_odeco, _, _ = MBO(mesh, OdecoMBO, None, 50, 3)
 ```
-The following lines compute octahedral and odeco fields by RTR with specified
-initial fields. Drop the second argument for random initialization.
-```matlab
-qOcta = OctaManopt(mesh, qOcta);
-qOdeco = OdecoManopt(mesh, qOdeco);
-```
-We have also included an implementation of the method of Ray et al. [2016]
-in the `ext/ray` directory. To use it, invoke
-```matlab
-qRay = Ray(mesh);
+
+Run RTR with specified initial fields (or pass `None` for random initialization):
+
+```python
+from rtr import OctaManopt, OdecoManopt
+
+q_octa_rtr, _, info_octa_rtr = OctaManopt(mesh, q_octa)
+q_odeco_rtr, _, info_odeco_rtr = OdecoManopt(mesh, q_odeco)
 ```
 
 ### Visualization
-To visualize an octahedral or odeco field, use `VisualizeResult`, which
-plots the integral curves and singular structure, e.g.,
-```matlab
-VisualizeResult(mesh, qOdeco);
+
+Visualize an octahedral or odeco field:
+
+```python
+from plot import VisualizeResult
+
+plotter = VisualizeResult(mesh, q_odeco)
 ```
-`PlotInterpolatedFrames` plots field-oriented cubes at specified sample
-points:
-```matlab
-PlotInterpolatedFrames(q, mesh.tetra, samples)
+
+Plot frame-aligned cubes at sample points:
+
+```python
+import numpy as np
+from plot import PlotInterpolatedFrames
+
+samples = mesh.verts[:100, :]  # example sample points (k, 3)
+PlotInterpolatedFrames(q_octa, mesh, samples)
 ```
-where `samples` is a $k \times 3$ matrix of sample positions.
 
-## Figures
-We have included scripts for generating (MATLAB versions of) figures that appear in
-the paper in the `figures/` directory.
-
-- `EnergyTest` compares energy divergence behavior of octahedral and odeco fields,
-as in Figure 12 in the paper.
-
-- `PrismFigures` generates a figure similar to Figure 1 in the paper, showing scaling
-behavior of an odeco field.
-
-- `ConvergenceComparisons` generates figures like Figures 5 and 6 in the paper:
-  ```matlab
-  ConvergenceComparisons('../meshes', 'path/to/output/');
-  ```
-
-- `GenerateComparisons` generates a table like that in our supplemental document:
-  ```matlab
-  GenerateComparisons('../meshes', 'path/to/output/');
-  ```
-
-- To verify the exactness of SDP projection into the octahedral and odeco varieties,
-respectively, execute
-    ```matlab
-    OctaExactnessTest(n);
-    OdecoExactnessTest(n);
-    ```
-    for a sufficiently large value of `n`.
+## Notes on MATLAB-Only Components
+- `ext/ray` contains the original MATLAB/MEX/C++ Ray implementation.  
+- The Python entry point is available in `src/ray` (`from ray import Ray, ray`) and mirrors the MATLAB behavior.
+- Scripts in `figures/` (`EnergyTest`, `PrismFigures`, `ConvergenceComparisons`, `GenerateComparisons`, `OctaExactnessTest`, `OdecoExactnessTest`) are MATLAB scripts.

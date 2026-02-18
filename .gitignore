@@ -9,3 +9,12 @@ formulae/*
 *.mexmaci64
 *.mexa64
 .vscode
+.claude
+.serena
+.pytest_cache
+__pycache__
+tests
+pyrefly.toml
+AGENTS.md
+CLAUDE.md
+src/arff.egg-info

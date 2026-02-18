@@ -1,4 +1,4 @@
-function [q, q0, info] = MBO(meshData, fiber, q0, tauMult, tauExponent, saveIterates)
+function [q, q0, info] = MBO(meshData, fiber, q0, tauMult, tauExponent, saveIterates, maxIters)
 %% Diffusion-generated algorithm for variety-valued maps.
 
 nv = meshData.nv;
@@ -40,6 +40,10 @@ if nargin < 6
     saveIterates = false;
 end
 
+if nargin < 7 || isempty(maxIters)
+    maxIters = 1000;
+end
+
 q = q0;
 warmstart = [];
 qProj = zeros(size(q));
@@ -55,7 +59,7 @@ if saveIterates
 end
 
 tic;
-for k = 2:1000
+for k = 2:maxIters
     info(k).tau = tau0 / (k - 1)^tauExponent;
     A = M + info(k).tau * L;
     
